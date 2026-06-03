@@ -63,6 +63,16 @@ export function stopBGM() {
   if (bgm) { bgm.pause(); bgm.currentTime = 0; bgmStarted = false }
 }
 
+// Pause when app goes to background, resume when comes back
+document.addEventListener('visibilitychange', () => {
+  if (!bgm) return
+  if (document.hidden) {
+    bgm.pause()
+  } else if (bgmStarted && !muted) {
+    bgm.play().catch(() => {})
+  }
+})
+
 export function playCorrect() {
   if (muted) return
   try {
