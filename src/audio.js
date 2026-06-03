@@ -4,12 +4,28 @@ let bgm = null
 let bgmStarted = false
 let muted = localStorage.getItem('mathGameMuted') === 'true'
 let audioCtx = null
+let winBuffer = null
+let winLoadPromise = null
 
+// AudioContext created ONLY after user gesture
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-  // Resume if suspended (iOS requires this after user gesture)
   if (audioCtx.state === 'suspended') audioCtx.resume()
   return audioCtx
+}
+
+async function ensureWinLoaded() {
+  if (winBuffer) return
+  if (winLoadPromise) return winLoadPromise
+  winLoadPromise = (async () => {
+    try {
+      const ctx = getAudioCtx()
+      const resp = await fetch(`${BASE}audio/win.wav`)
+      const arr = await resp.arrayBuffer()
+      winBuffer = await ctx.decodeAudioData(arr)
+    } catch (e) { console.warn('win sound load failed', e) }
+  })()
+  return winLoadPromise
 }
 
 export function isMuted() { return muted }
@@ -21,15 +37,23 @@ export function toggleMute() {
   return muted
 }
 
-// Call on every user interaction — resumes BGM after iOS autoplay block
-export function resumeBGM() {
+export async function resumeBGM() {
+  // Create BGM element if needed
   if (!bgm) {
     bgm = new Audio(`${BASE}audio/bg_music.ogg`)
     bgm.loop = true
     bgm.volume = muted ? 0 : 0.35
   }
+  // Also init AudioContext here so it's after user gesture
+  getAudioCtx()
+  // Load win sound now that we have a gesture
+  ensureWinLoaded()
+
   if (!bgmStarted || bgm.paused) {
-    bgm.play().then(() => { bgmStarted = true }).catch(() => {})
+    try {
+      await bgm.play()
+      bgmStarted = true
+    } catch (e) {}
   }
 }
 
@@ -38,20 +62,6 @@ export function startBGM() { resumeBGM() }
 export function stopBGM() {
   if (bgm) { bgm.pause(); bgm.currentTime = 0; bgmStarted = false }
 }
-
-// Preload win sound
-let winBuffer = null
-async function loadWin() {
-  if (winBuffer) return winBuffer
-  try {
-    const ctx = getAudioCtx()
-    const resp = await fetch(`${BASE}audio/win.wav`)
-    const arr = await resp.arrayBuffer()
-    winBuffer = await ctx.decodeAudioData(arr)
-  } catch (e) { console.warn('win sound load failed', e) }
-  return winBuffer
-}
-loadWin()
 
 export function playCorrect() {
   if (muted) return
@@ -75,25 +85,18 @@ export function playWrong() {
   if (muted) return
   try {
     const ctx = getAudioCtx()
-    // Deep bass thud — low sine + sub-bass, friendly not harsh
     const osc1 = ctx.createOscillator()
     const osc2 = ctx.createOscillator()
     const gain = ctx.createGain()
-
     osc1.type = 'sine'
     osc1.frequency.setValueAtTime(120, ctx.currentTime)
     osc1.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.5)
-
     osc2.type = 'sine'
     osc2.frequency.setValueAtTime(60, ctx.currentTime)
     osc2.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.5)
-
     gain.gain.setValueAtTime(0.5, ctx.currentTime)
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
-
-    osc1.connect(gain)
-    osc2.connect(gain)
-    gain.connect(ctx.destination)
+    osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination)
     osc1.start(); osc1.stop(ctx.currentTime + 0.5)
     osc2.start(); osc2.stop(ctx.currentTime + 0.5)
   } catch (e) {}
@@ -111,8 +114,7 @@ export function playTimeout() {
     osc.frequency.setValueAtTime(220, ctx.currentTime + 0.3)
     gain.gain.setValueAtTime(0.25, ctx.currentTime)
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
-    osc.connect(gain)
-    gain.connect(ctx.destination)
+    osc.connect(gain); gain.connect(ctx.destination)
     osc.start(); osc.stop(ctx.currentTime + 0.5)
   } catch (e) {}
 }
