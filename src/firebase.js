@@ -12,57 +12,115 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 const db = getFirestore(app)
-
 const STATS_DOC = doc(db, 'stats', 'main')
+const LS_KEY = 'mathGameStats'
+const LS_PENDING = 'mathGamePending' // flag: needs sync to Firebase
 
-// Today's date as YYYY-MM-DD key
 function todayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
 const defaultStats = {
   totalGames: 0,
+  totalCorrect: 0,
+  totalWrong: 0,
   starCounts: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
   totalStars: 0,
   bestScore: 0,
-  daily: {}, // { "2026-06-03": { games: 3, totalStars: 12.5 }, ... }
+  daily: {},
 }
 
-export async function loadStats() {
+// ── localStorage helpers ──────────────────────────────────────────────────────
+
+function lsLoad() {
   try {
-    const snap = await getDoc(STATS_DOC)
-    if (snap.exists()) {
-      const data = snap.data()
-      localStorage.setItem('mathGameStats', JSON.stringify(data))
-      return data
+    const raw = localStorage.getItem(LS_KEY)
+    return raw ? JSON.parse(raw) : { ...defaultStats }
+  } catch { return { ...defaultStats } }
+}
+
+function lsSave(stats) {
+  localStorage.setItem(LS_KEY, JSON.stringify(stats))
+}
+
+function setPending(v) {
+  localStorage.setItem(LS_PENDING, v ? '1' : '0')
+}
+
+export function isPending() {
+  return localStorage.getItem(LS_PENDING) === '1'
+}
+
+// ── Firebase helpers ──────────────────────────────────────────────────────────
+
+async function fbLoad() {
+  const snap = await getDoc(STATS_DOC)
+  return snap.exists() ? snap.data() : null
+}
+
+async function fbSave(stats) {
+  await setDoc(STATS_DOC, stats)
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+export async function loadStats() {
+  // Always read localStorage first (instant)
+  const local = lsLoad()
+
+  // Try to sync from Firebase if we have network
+  try {
+    const remote = await fbLoad()
+    if (remote) {
+      // Merge: take whichever has more games (handles multi-device)
+      const merged = (remote.totalGames || 0) >= (local.totalGames || 0) ? remote : local
+      lsSave(merged)
+      setPending(false)
+      return merged
     }
-    return { ...defaultStats }
-  } catch (e) {
-    console.error('Firebase load error:', e)
-    const local = localStorage.getItem('mathGameStats')
-    return local ? JSON.parse(local) : { ...defaultStats }
-  }
+  } catch { /* offline — use local */ }
+
+  return local
 }
 
 export async function saveStats(stats) {
+  // 1. Save to localStorage immediately
+  lsSave(stats)
+
+  // 2. Try Firebase
   try {
-    await setDoc(STATS_DOC, stats)
-    localStorage.setItem('mathGameStats', JSON.stringify(stats))
-  } catch (e) {
-    console.error('Firebase save error:', e)
-    localStorage.setItem('mathGameStats', JSON.stringify(stats))
+    await fbSave(stats)
+    setPending(false)
+  } catch {
+    // Mark as pending sync
+    setPending(true)
   }
 }
 
-export async function addGameResult(avgStars) {
-  const stats = await loadStats()
+// Called on app start — push any pending local data to Firebase
+export async function syncPending() {
+  if (!isPending()) return false
+  try {
+    const local = lsLoad()
+    await fbSave(local)
+    setPending(false)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function addGameResult(avgStars, correct, wrong) {
+  const stats = lsLoad() // read locally — no await needed
   const flooredKey = Math.floor(avgStars)
   const today = todayKey()
-  const prevDaily = stats.daily?.[today] || { games: 0, totalStars: 0 }
+  const prevDaily = stats.daily?.[today] || { games: 0, totalStars: 0, correct: 0, wrong: 0 }
 
   const updated = {
     ...stats,
     totalGames: (stats.totalGames || 0) + 1,
+    totalCorrect: (stats.totalCorrect || 0) + correct,
+    totalWrong: (stats.totalWrong || 0) + wrong,
     totalStars: (stats.totalStars || 0) + avgStars,
     bestScore: Math.max(stats.bestScore || 0, avgStars),
     starCounts: {
@@ -74,9 +132,12 @@ export async function addGameResult(avgStars) {
       [today]: {
         games: prevDaily.games + 1,
         totalStars: prevDaily.totalStars + avgStars,
+        correct: (prevDaily.correct || 0) + correct,
+        wrong: (prevDaily.wrong || 0) + wrong,
       },
     },
   }
+
   await saveStats(updated)
   return updated
 }
@@ -92,5 +153,7 @@ export function getTodayStats(stats) {
   return {
     games: d.games,
     avgStars: Math.round((d.totalStars / d.games) * 10) / 10,
+    correct: d.correct || 0,
+    wrong: d.wrong || 0,
   }
 }

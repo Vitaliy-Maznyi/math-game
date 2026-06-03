@@ -107,9 +107,9 @@ export default function GameScreen({ lang, settings, onGameEnd }) {
   const isTimeout = answered && input === '' && !isCorrect
 
   const PAD = [
-    ['7','8','9'],
-    ['4','5','6'],
     ['1','2','3'],
+    ['4','5','6'],
+    ['7','8','9'],
     ['⌫','0','✓'],
   ]
 

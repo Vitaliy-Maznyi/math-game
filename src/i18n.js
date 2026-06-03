@@ -49,6 +49,8 @@ export const translations = {
     settings: '⚙️',
     todayTitle: 'Dzisiaj',
     noGamesToday: 'Brak gier dzisiaj',
+    allTime: 'Łącznie',
+    accuracy: 'Celność',
   },
   en: {
     appTitle: '🔢 Math Game!',
@@ -100,6 +102,8 @@ export const translations = {
     settings: '⚙️',
     todayTitle: 'Today',
     noGamesToday: 'No games today yet',
+    allTime: 'All time',
+    accuracy: 'Accuracy',
   }
 }
 

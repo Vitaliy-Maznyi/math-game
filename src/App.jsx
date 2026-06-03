@@ -4,7 +4,7 @@ import GameScreen from './components/GameScreen'
 import ResultScreen from './components/ResultScreen'
 import StatsScreen from './components/StatsScreen'
 import SettingsScreen from './components/SettingsScreen'
-import { addGameResult } from './firebase'
+import { addGameResult, syncPending } from './firebase'
 import { loadSettings } from './settings'
 import { DEFAULT_SETTINGS } from './gameLogic'
 
@@ -18,12 +18,15 @@ export default function App() {
 
   useEffect(() => {
     loadSettings().then(setSettings)
+    syncPending() // push any offline data when connection restored
   }, [])
 
   const handleGameEnd = async (results) => {
     setGameResults(results)
     const avg = results.reduce((s, r) => s + r.stars, 0) / results.length
-    await addGameResult(avg)
+    const correct = results.filter(r => r.correct).length
+    const wrong = results.filter(r => !r.correct).length
+    await addGameResult(avg, correct, wrong)
     setScreen(SCREENS.RESULT)
   }
 
