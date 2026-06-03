@@ -4,23 +4,17 @@ import { t } from '../i18n'
 import Stars from './Stars'
 import { playCorrect, playWrong, playTimeout as playSfxTimeout, resumeBGM } from '../audio'
 
-const ANSWER_COLORS = [
-  { bg: 'from-pink-500 to-rose-500', border: 'border-rose-700' },
-  { bg: 'from-blue-500 to-indigo-500', border: 'border-indigo-700' },
-  { bg: 'from-green-500 to-emerald-500', border: 'border-emerald-700' },
-  { bg: 'from-yellow-400 to-orange-400', border: 'border-orange-600' },
-]
-
 export default function GameScreen({ lang, settings, onGameEnd }) {
   const [questionIndex, setQuestionIndex] = useState(0)
   const [problem, setProblem] = useState(null)
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS)
   const [answered, setAnswered] = useState(false)
-  const [selectedAnswer, setSelectedAnswer] = useState(null)
   const [results, setResults] = useState([])
   const [showFeedback, setShowFeedback] = useState(false)
   const [animClass, setAnimClass] = useState('')
   const [streak, setStreak] = useState(0)
+  const [input, setInput] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
 
   const timerRef = useRef(null)
   const timeLeftRef = useRef(TIMER_SECONDS)
@@ -31,27 +25,23 @@ export default function GameScreen({ lang, settings, onGameEnd }) {
     setTimeLeft(TIMER_SECONDS)
     timeLeftRef.current = TIMER_SECONDS
     setAnswered(false)
-    setSelectedAnswer(null)
+    setInput('')
+    setIsCorrect(null)
     setShowFeedback(false)
-  }, [])
+  }, [settings])
 
-  useEffect(() => {
-    loadQuestion()
-  }, [questionIndex])
+  useEffect(() => { loadQuestion() }, [questionIndex])
 
   useEffect(() => {
     if (answered || !problem) return
-
     timerRef.current = setInterval(() => {
       timeLeftRef.current -= 1
       setTimeLeft(timeLeftRef.current)
-
       if (timeLeftRef.current <= 0) {
         clearInterval(timerRef.current)
         handleTimeout()
       }
     }, 1000)
-
     return () => clearInterval(timerRef.current)
   }, [problem, answered])
 
@@ -59,46 +49,48 @@ export default function GameScreen({ lang, settings, onGameEnd }) {
     playSfxTimeout()
     setAnswered(true)
     setShowFeedback(true)
+    setIsCorrect(false)
     setStreak(0)
     const newResults = [...results, { stars: 0, correct: false }]
     setResults(newResults)
     setTimeout(() => advance(newResults), 2000)
   }
 
-  const handleAnswer = (option) => {
+  const handleDigit = (d) => {
     if (answered) return
-    resumeBGM() // ensure BGM plays after first user gesture on iOS
+    if (d === '⌫') {
+      setInput(p => p.slice(0, -1))
+    } else {
+      if (input.length >= 4) return // max 4 digits
+      setInput(p => p + d)
+    }
+  }
+
+  const handleSubmit = () => {
+    if (answered || input === '') return
+    resumeBGM()
     clearInterval(timerRef.current)
 
-    const isCorrect = option === problem.answer
-    const stars = isCorrect ? calculateStars(timeLeftRef.current) : 0
+    const userAnswer = parseInt(input, 10)
+    const correct = userAnswer === problem.answer
+    const stars = correct ? calculateStars(timeLeftRef.current) : 0
 
-    if (isCorrect) playCorrect()
-    else playWrong()
+    if (correct) { playCorrect(); setStreak(s => s + 1) }
+    else { playWrong(); setStreak(0) }
 
+    setIsCorrect(correct)
     setAnswered(true)
-    setSelectedAnswer(option)
     setShowFeedback(true)
-    setAnimClass(isCorrect ? '' : 'animate-shake')
+    setAnimClass(correct ? '' : 'animate-shake')
 
-    if (isCorrect) {
-      setStreak(s => s + 1)
-    } else {
-      setStreak(0)
-    }
-
-    const newResults = [...results, { stars, correct: isCorrect }]
+    const newResults = [...results, { stars, correct }]
     setResults(newResults)
-
     setTimeout(() => advance(newResults), 1800)
   }
 
   const advance = (currentResults) => {
-    if (questionIndex + 1 >= TOTAL_QUESTIONS) {
-      onGameEnd(currentResults)
-    } else {
-      setQuestionIndex(i => i + 1)
-    }
+    if (questionIndex + 1 >= TOTAL_QUESTIONS) onGameEnd(currentResults)
+    else setQuestionIndex(i => i + 1)
   }
 
   if (!problem) return (
@@ -112,15 +104,19 @@ export default function GameScreen({ lang, settings, onGameEnd }) {
   const isDanger = timeLeft <= 5
   const barColor = isDanger ? '#EF4444' : isWarning ? '#F97316' : '#22C55E'
   const currentStarsPreview = answered ? (results[results.length - 1]?.stars || 0) : calculateStars(timeLeft)
+  const isTimeout = answered && input === '' && !isCorrect
 
-  const isCorrect = answered && selectedAnswer === problem.answer
-  const isWrong = answered && selectedAnswer !== null && selectedAnswer !== problem.answer
-  const isTimeout = answered && selectedAnswer === null
+  const PAD = [
+    ['7','8','9'],
+    ['4','5','6'],
+    ['1','2','3'],
+    ['⌫','0','✓'],
+  ]
 
   return (
     <div className="min-h-screen bg-game flex flex-col p-4">
       {/* Header */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-3">
         <div className="bg-white/20 rounded-2xl px-4 py-2">
           <span className="text-white font-game text-lg">
             {t(lang, 'question')} {questionIndex + 1}/{TOTAL_QUESTIONS}
@@ -136,36 +132,32 @@ export default function GameScreen({ lang, settings, onGameEnd }) {
             <span key={i} className="text-lg">{r.correct ? '✅' : '❌'}</span>
           ))}
           {Array.from({ length: TOTAL_QUESTIONS - results.length }).map((_, i) => (
-            <span key={`empty-${i}`} className="text-lg opacity-30">⭕</span>
+            <span key={`e${i}`} className="text-lg opacity-30">⭕</span>
           ))}
         </div>
       </div>
 
       {/* Timer */}
-      <div className="mb-4">
+      <div className="mb-3">
         <div className="flex justify-between items-center mb-1">
           <span className="text-white/70 text-sm font-bold">⏱ {t(lang, 'timeLeft')}</span>
           <span className={`text-2xl font-black font-game ${isDanger ? 'text-red-300 timer-warning' : isWarning ? 'text-orange-300' : 'text-green-300'}`}>
             {timeLeft}s
           </span>
         </div>
-        <div className="w-full h-5 bg-white/20 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-1000 ease-linear"
-            style={{ width: `${pct}%`, backgroundColor: barColor }}
-          />
+        <div className="w-full h-4 bg-white/20 rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-1000 ease-linear"
+               style={{ width: `${pct}%`, backgroundColor: barColor }} />
         </div>
       </div>
 
       {/* Stars preview */}
       <div className="text-center mb-2">
-        <Stars count={answered ? (results[results.length-1]?.stars || 0) : currentStarsPreview} size="sm" />
+        <Stars count={currentStarsPreview} size="sm" />
       </div>
 
       {/* Problem card */}
-      <div className={`card p-8 text-center mb-6 ${animClass}`}
-           onAnimationEnd={() => setAnimClass('')}>
-
+      <div className={`card p-6 text-center mb-4 ${animClass}`} onAnimationEnd={() => setAnimClass('')}>
         {showFeedback ? (
           <div className="flex flex-col items-center gap-2">
             {isTimeout ? (
@@ -178,7 +170,7 @@ export default function GameScreen({ lang, settings, onGameEnd }) {
               <>
                 <div className="text-5xl">🎉</div>
                 <div className="text-3xl font-game text-green-600">{t(lang, 'correct')}</div>
-                <Stars count={results[results.length-1]?.stars || 0} size="lg" />
+                <Stars count={results[results.length - 1]?.stars || 0} size="lg" />
               </>
             ) : (
               <>
@@ -189,36 +181,53 @@ export default function GameScreen({ lang, settings, onGameEnd }) {
             )}
           </div>
         ) : (
-          <div className="text-7xl font-game text-purple-700 tracking-wider">
+          <div className="text-6xl font-game text-purple-700 tracking-wider">
             {problem.expression} = ?
           </div>
         )}
       </div>
 
-      {/* Answer buttons */}
-      <div className="grid grid-cols-2 gap-3">
-        {problem.options.map((option, i) => {
-          const color = ANSWER_COLORS[i]
-          let btnClass = `btn-answer bg-gradient-to-br ${color.bg} ${color.border}`
+      {/* Answer input display */}
+      <div className={`card mb-4 py-4 px-6 text-center transition-all ${
+        answered
+          ? isCorrect ? 'bg-green-50 border-2 border-green-300' : 'bg-red-50 border-2 border-red-300'
+          : 'bg-white'
+      }`}>
+        <div className={`text-5xl font-game min-h-[60px] flex items-center justify-center ${
+          input === '' ? 'text-gray-300' : answered && !isCorrect ? 'text-red-500' : 'text-purple-700'
+        }`}>
+          {input === '' ? '—' : input}
+        </div>
+      </div>
 
-          if (answered) {
-            if (option === problem.answer) {
-              btnClass += ' ring-4 ring-white scale-105'
-            } else if (option === selectedAnswer) {
-              btnClass += ' opacity-50'
-            } else {
-              btnClass += ' opacity-40'
-            }
+      {/* Numpad */}
+      <div className="grid grid-cols-3 gap-3">
+        {PAD.flat().map((key) => {
+          const isSubmit = key === '✓'
+          const isBackspace = key === '⌫'
+          const isEmpty = input === ''
+
+          let cls = `py-4 rounded-2xl text-3xl font-game transition-all border-b-4 active:border-b-2 active:translate-y-0.5 `
+          if (isSubmit) {
+            cls += isEmpty || answered
+              ? 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed'
+              : 'bg-gradient-to-br from-green-500 to-emerald-500 text-white border-emerald-700 shadow-lg'
+          } else if (isBackspace) {
+            cls += 'bg-orange-100 text-orange-600 border-orange-200'
+          } else {
+            cls += answered
+              ? 'bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed'
+              : 'bg-white text-purple-700 border-purple-200 shadow-sm'
           }
 
           return (
             <button
-              key={option}
-              onClick={() => handleAnswer(option)}
-              disabled={answered}
-              className={btnClass}
+              key={key}
+              onClick={() => isSubmit ? handleSubmit() : handleDigit(key)}
+              disabled={answered && key !== '⌫'}
+              className={cls}
             >
-              {option}
+              {key}
             </button>
           )
         })}
