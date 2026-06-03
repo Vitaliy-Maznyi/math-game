@@ -59,33 +59,34 @@ function generateSub(limit) {
 }
 
 function generateMul(limit) {
-  // Build all valid pairs where a*b <= limit, a>=2, b>=2
+  // Both factors and result must be <= limit
   const pairs = []
   for (let a = 2; a <= limit; a++) {
-    for (let b = 2; b <= limit; b++) {
+    for (let b = 2; b <= a; b++) { // b<=a to avoid duplicates
       if (a * b <= limit) pairs.push([a, b])
     }
   }
   if (pairs.length === 0) return { expression: `2 × 2`, answer: 4 }
   const [a, b] = pairs[Math.floor(Math.random() * pairs.length)]
-  return { expression: `${a} × ${b}`, answer: a * b }
+  // randomize order
+  return Math.random() > 0.5
+    ? { expression: `${a} × ${b}`, answer: a * b }
+    : { expression: `${b} × ${a}`, answer: a * b }
 }
 
 function generateDiv(limit) {
-  // Generate division without remainder: pick result and divisor, compute dividend
+  // dividend <= limit, divisor <= limit, result <= limit, no remainder
   const pairs = []
-  for (let result = 2; result <= limit; result++) {
-    for (let divisor = 2; divisor <= limit; divisor++) {
-      const dividend = result * divisor
-      if (dividend <= limit * divisor && divisor <= limit && result <= limit) {
+  for (let divisor = 2; divisor <= limit; divisor++) {
+    for (let result = 2; result <= limit; result++) {
+      const dividend = divisor * result
+      if (dividend <= limit) {
         pairs.push({ dividend, divisor, result })
       }
     }
   }
-  // filter to keep dividend reasonable
-  const valid = pairs.filter(p => p.dividend <= limit * 10 && p.dividend >= 2)
-  if (valid.length === 0) return { expression: `4 ÷ 2`, answer: 2 }
-  const p = valid[Math.floor(Math.random() * valid.length)]
+  if (pairs.length === 0) return { expression: `4 ÷ 2`, answer: 2 }
+  const p = pairs[Math.floor(Math.random() * pairs.length)]
   return { expression: `${p.dividend} ÷ ${p.divisor}`, answer: p.result }
 }
 
