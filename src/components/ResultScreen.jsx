@@ -57,13 +57,15 @@ export default function ResultScreen({ lang, results, onPlayAgain, onMenu }) {
         </div>
 
         {/* Per-question breakdown */}
-        <div className="flex flex-wrap justify-center gap-x-1 gap-y-2 mb-6">
+        <div className="grid grid-cols-5 gap-2 mb-6">
           {results.map((r, i) => (
-            <div key={i} className="flex flex-col items-center w-9">
-              <span className="text-xs text-gray-400">{i+1}</span>
-              <span className="text-yellow-400 text-xs leading-tight">
-                {'★'.repeat(r.stars)}{'☆'.repeat(5-r.stars)}
-              </span>
+            <div key={i} className="flex flex-col items-center bg-gray-50 rounded-xl py-2 px-1">
+              <span className="text-xs text-gray-400 font-bold mb-1">{i+1}</span>
+              <div className="flex flex-wrap justify-center gap-px">
+                {Array.from({length: 5}).map((_, si) => (
+                  <span key={si} className={`text-sm leading-none ${si < r.stars ? 'text-yellow-400' : 'text-gray-200'}`}>★</span>
+                ))}
+              </div>
             </div>
           ))}
         </div>
