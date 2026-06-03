@@ -1,14 +1,7 @@
 import { initializeApp } from 'firebase/app'
+import { firebaseConfig } from './firebaseConfig'
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCKiIEhv3_xXEarvsttEjJDo_krs9e_IBA",
-  authDomain: "math-game-vm.firebaseapp.com",
-  projectId: "math-game-vm",
-  storageBucket: "math-game-vm.firebasestorage.app",
-  messagingSenderId: "460625624553",
-  appId: "1:460625624553:web:0649e9e12250146447df78"
-}
 
 const app = initializeApp(firebaseConfig)
 const db = getFirestore(app)
