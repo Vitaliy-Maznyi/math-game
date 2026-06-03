@@ -1,9 +1,22 @@
+import { useState, useEffect } from 'react'
 import { t } from '../i18n'
+import { startBGM, isMuted, toggleMute } from '../audio'
 
 export default function HomeScreen({ lang, setLang, onNewGame, onStats, onSettings }) {
+  const [muted, setMuted] = useState(isMuted())
+
+  useEffect(() => {
+    startBGM()
+  }, [])
+
+  const handleMute = () => {
+    const m = toggleMute()
+    setMuted(m)
+  }
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-game p-4">
-      {/* Settings button - top left, subtle */}
+      {/* Settings button - top left */}
       <div className="absolute top-4 left-4">
         <button
           onClick={onSettings}
@@ -11,8 +24,12 @@ export default function HomeScreen({ lang, setLang, onNewGame, onStats, onSettin
         >⚙️</button>
       </div>
 
-      {/* Lang switcher */}
-      <div className="absolute top-4 right-4 flex gap-2">
+      {/* Lang switcher + mute - top right */}
+      <div className="absolute top-4 right-4 flex gap-2 items-center">
+        <button
+          onClick={handleMute}
+          className="w-10 h-10 rounded-full bg-white/20 text-white text-xl flex items-center justify-center active:bg-white/30 transition-all"
+        >{muted ? '🔇' : '🔊'}</button>
         <button
           onClick={() => setLang('pl')}
           className={`px-3 py-1 rounded-full text-sm font-bold transition-all ${lang === 'pl' ? 'bg-white text-purple-700' : 'bg-purple-600 text-white opacity-60'}`}
@@ -30,7 +47,7 @@ export default function HomeScreen({ lang, setLang, onNewGame, onStats, onSettin
           {t(lang, 'appTitle')}
         </h1>
         <div className="flex justify-center gap-2 mt-3 text-4xl">
-          {'➕➖'.split('').map((ch, i) => (
+          {['➕','➖'].map((ch, i) => (
             <span key={i} className="animate-float" style={{ animationDelay: `${i * 0.3}s` }}>{ch}</span>
           ))}
         </div>
@@ -60,7 +77,7 @@ export default function HomeScreen({ lang, setLang, onNewGame, onStats, onSettin
         </button>
       </div>
 
-      {/* Decorative elements */}
+      {/* Decorative */}
       <div className="mt-12 flex gap-6 text-5xl opacity-40">
         {['🌟', '🎯', '🏆'].map((em, i) => (
           <span key={i} className="animate-float" style={{ animationDelay: `${i * 0.5}s` }}>{em}</span>

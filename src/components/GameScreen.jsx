@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { generateProblem, calculateStars, TOTAL_QUESTIONS, TIMER_SECONDS } from '../gameLogic'
 import { t } from '../i18n'
 import Stars from './Stars'
+import { playCorrect, playWrong, playTimeout as playSfxTimeout } from '../audio'
 
 const ANSWER_COLORS = [
   { bg: 'from-pink-500 to-rose-500', border: 'border-rose-700' },
@@ -55,6 +56,7 @@ export default function GameScreen({ lang, settings, onGameEnd }) {
   }, [problem, answered])
 
   const handleTimeout = () => {
+    playSfxTimeout()
     setAnswered(true)
     setShowFeedback(true)
     setStreak(0)
@@ -69,6 +71,9 @@ export default function GameScreen({ lang, settings, onGameEnd }) {
 
     const isCorrect = option === problem.answer
     const stars = isCorrect ? calculateStars(timeLeftRef.current) : 0
+
+    if (isCorrect) playCorrect()
+    else playWrong()
 
     setAnswered(true)
     setSelectedAnswer(option)
