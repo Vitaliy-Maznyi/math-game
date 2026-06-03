@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { generateProblem, calculateStars, TOTAL_QUESTIONS, TIMER_SECONDS } from '../gameLogic'
 import { t } from '../i18n'
 import Stars from './Stars'
-import { playCorrect, playWrong, playTimeout as playSfxTimeout } from '../audio'
+import { playCorrect, playWrong, playTimeout as playSfxTimeout, resumeBGM } from '../audio'
 
 const ANSWER_COLORS = [
   { bg: 'from-pink-500 to-rose-500', border: 'border-rose-700' },
@@ -67,6 +67,7 @@ export default function GameScreen({ lang, settings, onGameEnd }) {
 
   const handleAnswer = (option) => {
     if (answered) return
+    resumeBGM() // ensure BGM plays after first user gesture on iOS
     clearInterval(timerRef.current)
 
     const isCorrect = option === problem.answer
@@ -181,7 +182,7 @@ export default function GameScreen({ lang, settings, onGameEnd }) {
               </>
             ) : (
               <>
-                <div className="text-5xl">😅</div>
+                <div className="text-5xl">🙁</div>
                 <div className="text-2xl font-bold text-red-500">{t(lang, 'wrong')}</div>
                 <div className="text-xl text-gray-600">{t(lang, 'correctAnswer')} <strong className="text-green-600">{problem.answer}</strong></div>
               </>

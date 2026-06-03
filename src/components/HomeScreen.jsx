@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { t } from '../i18n'
-import { startBGM, isMuted, toggleMute } from '../audio'
+import { startBGM, isMuted, toggleMute, resumeBGM } from '../audio'
 
 export default function HomeScreen({ lang, setLang, onNewGame, onStats, onSettings }) {
   const [muted, setMuted] = useState(isMuted())
@@ -56,7 +56,7 @@ export default function HomeScreen({ lang, setLang, onNewGame, onStats, onSettin
       {/* Buttons */}
       <div className="w-full max-w-xs flex flex-col gap-4">
         <button
-          onClick={onNewGame}
+          onClick={() => { resumeBGM(); onNewGame() }}
           className="w-full py-6 rounded-3xl text-3xl font-game text-white shadow-2xl
                      bg-gradient-to-r from-yellow-400 to-orange-400
                      border-b-4 border-orange-600
@@ -67,7 +67,7 @@ export default function HomeScreen({ lang, setLang, onNewGame, onStats, onSettin
         </button>
 
         <button
-          onClick={onStats}
+          onClick={() => { resumeBGM(); onStats() }}
           className="w-full py-5 rounded-3xl text-2xl font-game text-white shadow-xl
                      bg-gradient-to-r from-blue-500 to-cyan-400
                      border-b-4 border-blue-700

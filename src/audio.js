@@ -1,23 +1,18 @@
-// Audio manager — handles BGM + SFX with mute toggle
-// BGM: Children's March Theme (OGG loop)
-// SFX correct: Win sound (WAV)
-// SFX wrong: Web Audio API generated buzz
-// SFX game end: fanfare via Web Audio API
-
 const BASE = import.meta.env.BASE_URL
 
 let bgm = null
+let bgmStarted = false
 let muted = localStorage.getItem('mathGameMuted') === 'true'
 let audioCtx = null
 
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  // Resume if suspended (iOS requires this after user gesture)
+  if (audioCtx.state === 'suspended') audioCtx.resume()
   return audioCtx
 }
 
-export function isMuted() {
-  return muted
-}
+export function isMuted() { return muted }
 
 export function toggleMute() {
   muted = !muted
@@ -26,16 +21,22 @@ export function toggleMute() {
   return muted
 }
 
-export function startBGM() {
-  if (bgm) return
-  bgm = new Audio(`${BASE}audio/bg_music.ogg`)
-  bgm.loop = true
-  bgm.volume = muted ? 0 : 0.35
-  bgm.play().catch(() => {}) // ignore autoplay block
+// Call on every user interaction — resumes BGM after iOS autoplay block
+export function resumeBGM() {
+  if (!bgm) {
+    bgm = new Audio(`${BASE}audio/bg_music.ogg`)
+    bgm.loop = true
+    bgm.volume = muted ? 0 : 0.35
+  }
+  if (!bgmStarted || bgm.paused) {
+    bgm.play().then(() => { bgmStarted = true }).catch(() => {})
+  }
 }
 
+export function startBGM() { resumeBGM() }
+
 export function stopBGM() {
-  if (bgm) { bgm.pause(); bgm.currentTime = 0 }
+  if (bgm) { bgm.pause(); bgm.currentTime = 0; bgmStarted = false }
 }
 
 // Preload win sound
@@ -59,7 +60,6 @@ export function playCorrect() {
     if (winBuffer) {
       const src = ctx.createBufferSource()
       src.buffer = winBuffer
-      // Shorten to ~0.8s by speeding up slightly
       src.playbackRate.value = 1.3
       const gain = ctx.createGain()
       gain.gain.value = 0.7
@@ -75,17 +75,27 @@ export function playWrong() {
   if (muted) return
   try {
     const ctx = getAudioCtx()
-    const osc = ctx.createOscillator()
+    // Deep bass thud — low sine + sub-bass, friendly not harsh
+    const osc1 = ctx.createOscillator()
+    const osc2 = ctx.createOscillator()
     const gain = ctx.createGain()
-    osc.type = 'sawtooth'
-    osc.frequency.setValueAtTime(220, ctx.currentTime)
-    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.4)
-    gain.gain.setValueAtTime(0.3, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
-    osc.connect(gain)
+
+    osc1.type = 'sine'
+    osc1.frequency.setValueAtTime(120, ctx.currentTime)
+    osc1.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.5)
+
+    osc2.type = 'sine'
+    osc2.frequency.setValueAtTime(60, ctx.currentTime)
+    osc2.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.5)
+
+    gain.gain.setValueAtTime(0.5, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+
+    osc1.connect(gain)
+    osc2.connect(gain)
     gain.connect(ctx.destination)
-    osc.start()
-    osc.stop(ctx.currentTime + 0.4)
+    osc1.start(); osc1.stop(ctx.currentTime + 0.5)
+    osc2.start(); osc2.stop(ctx.currentTime + 0.5)
   } catch (e) {}
 }
 
@@ -103,8 +113,7 @@ export function playTimeout() {
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
     osc.connect(gain)
     gain.connect(ctx.destination)
-    osc.start()
-    osc.stop(ctx.currentTime + 0.5)
+    osc.start(); osc.stop(ctx.currentTime + 0.5)
   } catch (e) {}
 }
 
@@ -112,7 +121,6 @@ export function playGameWin() {
   if (muted) return
   try {
     const ctx = getAudioCtx()
-    // Little fanfare: C-E-G-C
     const notes = [523, 659, 784, 1047]
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator()
@@ -122,10 +130,8 @@ export function playGameWin() {
       const t = ctx.currentTime + i * 0.15
       gain.gain.setValueAtTime(0.35, t)
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3)
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.start(t)
-      osc.stop(t + 0.3)
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.start(t); osc.stop(t + 0.3)
     })
   } catch (e) {}
 }
@@ -143,10 +149,8 @@ export function playGameLose() {
       const t = ctx.currentTime + i * 0.2
       gain.gain.setValueAtTime(0.3, t)
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35)
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.start(t)
-      osc.stop(t + 0.35)
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.start(t); osc.stop(t + 0.35)
     })
   } catch (e) {}
 }
