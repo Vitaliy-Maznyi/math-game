@@ -10,7 +10,7 @@ const ANSWER_COLORS = [
   { bg: 'from-yellow-400 to-orange-400', border: 'border-orange-600' },
 ]
 
-export default function GameScreen({ lang, onGameEnd }) {
+export default function GameScreen({ lang, settings, onGameEnd }) {
   const [questionIndex, setQuestionIndex] = useState(0)
   const [problem, setProblem] = useState(null)
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS)
@@ -26,7 +26,7 @@ export default function GameScreen({ lang, onGameEnd }) {
 
   const loadQuestion = useCallback(() => {
     setAnimClass('animate-bounce-in')
-    setProblem(generateProblem())
+    setProblem(generateProblem(settings))
     setTimeLeft(TIMER_SECONDS)
     timeLeftRef.current = TIMER_SECONDS
     setAnswered(false)

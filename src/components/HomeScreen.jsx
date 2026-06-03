@@ -1,8 +1,16 @@
 import { t } from '../i18n'
 
-export default function HomeScreen({ lang, setLang, onNewGame, onStats }) {
+export default function HomeScreen({ lang, setLang, onNewGame, onStats, onSettings }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-game p-4">
+      {/* Settings button - top left, subtle */}
+      <div className="absolute top-4 left-4">
+        <button
+          onClick={onSettings}
+          className="w-10 h-10 rounded-full bg-white/20 text-white text-xl flex items-center justify-center active:bg-white/30 transition-all"
+        >⚙️</button>
+      </div>
+
       {/* Lang switcher */}
       <div className="absolute top-4 right-4 flex gap-2">
         <button
