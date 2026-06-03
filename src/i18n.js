@@ -47,6 +47,8 @@ export const translations = {
     save: 'Zapisz ustawienia',
     saved: 'Zapisano!',
     settings: '⚙️',
+    todayTitle: 'Dzisiaj',
+    noGamesToday: 'Brak gier dzisiaj',
   },
   en: {
     appTitle: '🔢 Math Game!',
@@ -96,6 +98,8 @@ export const translations = {
     save: 'Save settings',
     saved: 'Saved!',
     settings: '⚙️',
+    todayTitle: 'Today',
+    noGamesToday: 'No games today yet',
   }
 }
 

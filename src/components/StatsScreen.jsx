@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { t } from '../i18n'
-import { loadStats, clearStats } from '../firebase'
+import { loadStats, clearStats, getTodayStats } from '../firebase'
 import Stars from './Stars'
 
 export default function StatsScreen({ lang, onBack }) {
@@ -53,6 +53,29 @@ export default function StatsScreen({ lang, onBack }) {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
+          {/* Today's stats */}
+          {(() => {
+            const today = getTodayStats(stats)
+            return (
+              <div className={`card p-5 border-2 ${today ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200 bg-gray-50'}`}>
+                <h3 className="font-game text-xl text-yellow-600 mb-3">📅 {t(lang, 'todayTitle')}</h3>
+                {today ? (
+                  <div className="flex gap-4 items-center">
+                    <div className="flex-1 text-center bg-white rounded-2xl py-3">
+                      <div className="text-3xl font-game text-purple-700">{today.games}</div>
+                      <div className="text-xs text-gray-500 mt-1">{t(lang, 'totalGames')}</div>
+                    </div>
+                    <div className="flex-1 text-center bg-white rounded-2xl py-3">
+                      <div className="text-3xl font-game text-yellow-500">{today.avgStars} ⭐</div>
+                      <div className="text-xs text-gray-500 mt-1">{t(lang, 'avgScore')}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-400 text-center py-2">{t(lang, 'noGamesToday')}</p>
+                )}
+              </div>
+            )
+          })()}
           {/* Summary cards */}
           <div className="grid grid-cols-3 gap-3">
             <div className="card p-4 text-center">
