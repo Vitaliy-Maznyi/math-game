@@ -33,6 +33,8 @@ export const translations = {
     loading: 'Ładowanie...',
     timeUp: '⏰ Czas minął!',
     streak: 'Passa:',
+    correctCount: 'poprawnych',
+    wrongCount: 'błędów',
   },
   en: {
     appTitle: '🔢 Math Game!',
@@ -68,6 +70,8 @@ export const translations = {
     loading: 'Loading...',
     timeUp: '⏰ Time\'s up!',
     streak: 'Streak:',
+    correctCount: 'correct',
+    wrongCount: 'wrong',
   }
 }
 

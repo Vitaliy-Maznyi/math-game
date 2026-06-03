@@ -45,23 +45,25 @@ export default function ResultScreen({ lang, results, onPlayAgain, onMenu }) {
         </div>
 
         {/* Stats breakdown */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-green-50 rounded-xl p-3">
             <div className="text-3xl font-game text-green-600">{correct}</div>
-            <div className="text-xs text-gray-500 mt-1">✅ poprawnych</div>
+            <div className="text-xs text-gray-500 mt-1">✅ {t(lang, 'correctCount')}</div>
           </div>
           <div className="bg-orange-50 rounded-xl p-3">
             <div className="text-3xl font-game text-orange-500">{results.length - correct}</div>
-            <div className="text-xs text-gray-500 mt-1">❌ błędów</div>
+            <div className="text-xs text-gray-500 mt-1">❌ {t(lang, 'wrongCount')}</div>
           </div>
         </div>
 
         {/* Per-question breakdown */}
-        <div className="flex justify-center gap-1 mb-6">
+        <div className="flex flex-wrap justify-center gap-x-1 gap-y-2 mb-6">
           {results.map((r, i) => (
-            <div key={i} className="flex flex-col items-center">
+            <div key={i} className="flex flex-col items-center w-9">
               <span className="text-xs text-gray-400">{i+1}</span>
-              <span className="text-yellow-400 text-lg">{'★'.repeat(r.stars)}{'☆'.repeat(5-r.stars)}</span>
+              <span className="text-yellow-400 text-xs leading-tight">
+                {'★'.repeat(r.stars)}{'☆'.repeat(5-r.stars)}
+              </span>
             </div>
           ))}
         </div>
